@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="team1" type="move_eight.py" name="move_eight" output="screen">
+  </node>
+</launch>
