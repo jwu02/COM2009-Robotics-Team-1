@@ -9,7 +9,7 @@ from math import sqrt, pow, pi
 
 class MoveEight():
 
-    def odom_callback(self, odom_data):
+    def odom_callback(self, odom_data:Odometry):
         # obtain the orientation co-ords:
         orientation_x = odom_data.pose.pose.orientation.x
         orientation_y = odom_data.pose.pose.orientation.y
@@ -86,7 +86,7 @@ class MoveEight():
             self.rate.sleep()
         
         # first (red) loop
-        while self.theta_z < 345/360*2*pi: # stop loop after turning approx. just below 360 degrees / 2*pi radians
+        while self.theta_z < 345/360*2*pi: # stop loop after turning approx. just below 2*pi radians
             print(f"x={(self.x):.2f} [m], y={(self.y):.2f} [m], yaw={(self.theta_z):.1f} [degrees].")
             self.pub.publish(self.vel_cmd)
             self.rate.sleep()
