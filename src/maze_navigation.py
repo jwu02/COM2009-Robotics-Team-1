@@ -37,7 +37,7 @@ class MazeNavigation():
         FRONT_STOPPING_DISTANCE = 0.4
 
         # limiting angular velocity to avoid excessive angle changes when error is too big
-        self.MAX_ANG_VEL = self.lin_vel / TARGET_DIST_FROM_WALL * 2
+        self.MAX_ANG_VEL = self.lin_vel / TARGET_DIST_FROM_WALL * 1.75
 
 
         def follow_right_wall():
@@ -45,7 +45,7 @@ class MazeNavigation():
                 so robot follow wall to its right at particular distance away
             """
 
-            KP = -5.7 # -4 to -6? -4.4, 5.7
+            KP = -5 # -4 to -6? -4.4, 5.7
             error = self.robot_scan.right_whisker_distance - TARGET_DIST_FROM_WALL
             self.ang_vel = KP * error
 
@@ -63,7 +63,7 @@ class MazeNavigation():
                 self.ang_vel >= -0.2 and self.ang_vel <= 0.2:
                 self.lin_vel = 0.25
             else:
-                self.lin_vel = 0.15
+                self.lin_vel = 0.25
             
             if self.robot_scan.front_min_distance <= FRONT_STOPPING_DISTANCE and \
                 self.robot_scan.front_max_distance <= 1:
@@ -77,20 +77,33 @@ class MazeNavigation():
                     self.robot_scan.left_max_distance <= 1:
                     # if deadend turn around (by turning left)
                     while self.robot_scan.front_min_distance <= 0.8:
-                        self.robot_controller.set_move_cmd(0, self.MAX_ANG_VEL)
+                        # IMPROVEMENT: add condition for when turning, 
+                        #   if rear of robot close to wall, increase linear velocity
+                        self.lin_vel = 0
+                        if self.robot_scan.rear_min_distance <= 0.25: # rear end potentially stuck against wall
+                            self.lin_vel = 0.05
+                        
+                        self.robot_controller.set_move_cmd(self.lin_vel, self.MAX_ANG_VEL)
                         self.robot_controller.publish()
 
                 elif self.robot_scan.right_max_distance <= 1.5:
                     # if no path to right, turn left
                     while self.robot_scan.front_min_distance <= 0.8:
-                        self.robot_controller.set_move_cmd(0, self.MAX_ANG_VEL)
+                        self.lin_vel = 0
+                        if self.robot_scan.rear_min_distance <= 0.25: # rear end potentially stuck against wall
+                            self.lin_vel = 0.05
+                        
+                        self.robot_controller.set_move_cmd(self.lin_vel, self.MAX_ANG_VEL)
                         self.robot_controller.publish()
 
                 elif self.robot_scan.left_max_distance <= 1.5:
                     # if no path to left, turn right
                     while self.robot_scan.front_min_distance <= 0.8:
-                        self.robot_controller.set_move_cmd(0, -self.MAX_ANG_VEL*2)
-                        self.robot_controller.publish()
+                        self.lin_vel = 0
+                        if self.robot_scan.rear_min_distance <= 0.25: # rear end potentially stuck against wall
+                            self.lin_vel = 0.05
+                        
+                        self.robot_controller.set_move_cmd(self.lin_vel, -self.MAX_ANG_VEL)
                     
             else:
                 # if possible move forward
@@ -106,6 +119,7 @@ class Tb3LaserScan(object):
         front_region = np.array(scan_data.ranges[-20:] + scan_data.ranges[0:20])
         left_region = np.array(scan_data.ranges[90-60:90+60])
         right_region = np.array(scan_data.ranges[270-60:270+60])
+        rear_region = np.array(scan_data.ranges[120:240])
 
         self.front_min_distance = front_region.min()
         self.front_max_distance = front_region.max()
@@ -113,7 +127,9 @@ class Tb3LaserScan(object):
         self.left_max_distance = left_region.max()
 
         self.right_max_distance = right_region.max()
-        self.right_whisker_distance = scan_data.ranges[-70]
+        self.right_whisker_distance = scan_data.ranges[-60]
+
+        self.rear_min_distance = rear_region.min()
     
 
     def __init__(self):
@@ -126,6 +142,8 @@ class Tb3LaserScan(object):
         
         self.right_max_distance = 0.0
         self.right_whisker_distance = 0.0
+
+        self.rear_min_distance = 0.0
         
         self.subscriber = rospy.Subscriber('/scan', LaserScan, self.laserscan_cb) 
 
