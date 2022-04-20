@@ -10,7 +10,7 @@ import numpy as np
 class MazeNavigation():
 
     def __init__(self):
-        self.node_name = "maze_nav_action_server"
+        self.node_name = "maze_navigation"
 
         rospy.init_node(self.node_name)
         self.rate = rospy.Rate(100)
