@@ -1,6 +1,4 @@
 <launch>
-  <node pkg="team1" type="search_action_server.py" name="search_action_server" output="screen">
-  </node>
-  <node pkg="team1" type="search_action_client.py" name="search_action_client" output="screen">
+  <node pkg="team1" type="obstacle_avoidance.py" name="obstacle_avoidance" output="screen">
   </node>
 </launch>
