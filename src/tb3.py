@@ -4,11 +4,15 @@ import rospy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
+# import the function to convert orientation from quaternions to angles
 from tf.transformations import euler_from_quaternion
 from math import degrees, sqrt
 import numpy as np
 
 class Tb3Move(object):
+    MAX_LIN_VEL = 0.26 # m/s
+    MAX_ANG_VEL = 1.82 # rad/s
+
     def __init__(self):
         self.publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.publisher_rate = rospy.Rate(10) # Hz
@@ -32,31 +36,66 @@ class Tb3Odometry(object):
         (_, _, yaw) = euler_from_quaternion([orientation.x,
             orientation.y, orientation.z, orientation.w],'sxyz')
         
+        # current position and orientations
         self.yaw = self.round(degrees(yaw), 4)
         self.posx = self.round(position.x, 4)
         self.posy = self.round(position.y, 4)
 
-        # calculate distance travelled for Levy flights step size
+        # relative orientation
+        if self.yaw >= -90:
+            self.relative_yaw = self.yaw + 90
+        else: # -91 to -179 deg
+            self.relative_yaw = 270 + (180 + self.yaw)
+
+        # relative position
+        self.relative_posx = -self.posx
+        self.relative_posy = -self.posy
+
         if self.startup:
+            # initial startup position
+            self.yaw0 = self.yaw
+            self.posx0 = self.posx
+            self.posy0 = self.posx
+
+            # position of last odom callback
             self.previous_x = self.posx
             self.previous_y = self.posy
-        self.startup = False
+        
+            self.startup = False
 
-        d_increment = sqrt((self.posx - self.previous_x) ** 2 + (self.posy - self.previous_y) ** 2)
-        self.total_distance = self.total_distance + d_increment
+        # # calculate robot displacement from original start point
+        # self.displacement = sqrt((self.posx-self.posx0)**2 + (self.posy-self.posy0)**2)
+
+        # calculate total distance travelled for Levy flights step size
+        # by adding small increments to the total everytime the robot moves
+        distance_increment = sqrt((self.posx-self.previous_x)**2 + (self.posy-self.previous_y)**2)
+        self.total_distance = self.total_distance + distance_increment
 
         self.previous_x = self.posx
         self.previous_y = self.posy
     
     def __init__(self):
+        self.subscriber = rospy.Subscriber('/odom', Odometry, self.odom_cb)
+
+        self.yaw0 = 0.0
+        self.posx0 = 0.0
+        self.posy0 = 0.0
+
         self.posx = 0.0
         self.posy = 0.0
         self.yaw = 0.0
-        self.subscriber = rospy.Subscriber('/odom', Odometry, self.odom_cb)
+
+        self.relative_posx = 0.0
+        self.relative_posy = 0.0
+        self.relative_yaw = 0.0
+
+        # self.displacement = 0.0
         
+        # for calculating total distance travelled
         self.total_distance = 0.0
         self.previous_x = 0.0
         self.previous_y = 0.0
+
         self.startup = True
 
 
