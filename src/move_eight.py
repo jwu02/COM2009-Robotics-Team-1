@@ -43,23 +43,28 @@ yaw={(self.robot_odom.relative_yaw):.1f} [degrees].")
             self.rate.sleep()
 
         # first loop (red)
-        while not (self.robot_odom.relative_yaw > 350 and \
-            self.robot_odom.relative_posx < 0.1 and \
-            self.robot_odom.relative_posy < 0.1):
+        while not (self.robot_odom.relative_yaw > 350):
             circle_poles()
             
         self.ang_vel *= -1
         
         # second loop (blue)
-        while not (self.robot_odom.relative_yaw < 15 and \
-            self.robot_odom.relative_posx < 0.2 and \
-            self.robot_odom.relative_posy < 0.2):
+        while not (self.robot_odom.relative_yaw < 20):
             circle_poles()
 
+        # correcting position at end so robot finish near starting position
+        while self.robot_odom.relative_posy <= -0.1:
+            circle_poles()
         self.robot_controller.stop()
 
-        # IMPROVEMENTS:
+        # IMPROVEMENTS (simulation):
         # - sometimes circle blue pole more than once before stopping
+
+        # IMPROVEMENTS (real robots):
+        # - code works completely differently on real robots
+        # - robot doesn't turn correct moment, have a look at /reset topic
+        # - robot speed different in simulation vs real, 
+        #       -> cus rate same as rate message published at
 
 
 if __name__ == '__main__':
