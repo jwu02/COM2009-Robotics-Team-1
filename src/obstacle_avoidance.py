@@ -1,10 +1,9 @@
 #!/usr/bin/python3
 
-from pyrfc3339 import generate
 import rospy
 # Import some helper functions from the tb3.py module within this package
 from tb3 import Tb3Move, Tb3Odometry, Tb3LaserScan
-from random import randint, random, uniform
+from random import randint, random
 
 
 class ObstacleAvoidance():
