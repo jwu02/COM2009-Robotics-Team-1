@@ -1,0 +1,50 @@
+red:
+  h:
+    min: -1
+    max: 2
+  s:
+    min: 206
+    max: 255
+  # v:
+  #   min: 100
+  #   max: 255
+
+green:
+  h:
+    min: 58
+    max: 62
+  s:
+    min: 206
+    max: 255
+
+yellow:
+  h:
+    min: 28
+    max: 32
+  s:
+    min: 202
+    max: 255
+
+turqoise:
+  h:
+    min: 87
+    max: 92
+  s:
+    min: 163
+    max: 255
+
+blue:
+  h:
+    min: 118
+    max: 122
+  s:
+    min: 232
+    max: 255
+
+purple:
+  h:
+    min: 148
+    max: 152
+  s:
+    min: 213
+    max: 255
