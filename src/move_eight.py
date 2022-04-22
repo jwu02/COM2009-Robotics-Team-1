@@ -21,10 +21,10 @@ class MoveEight():
         # angular velocity = linear velocity / radius
         self.ang_vel = self.lin_vel / self.PATH_RADIUS
 
+        self.simulation_start_time = rospy.get_rostime()
+        self.assignment_time_limit = rospy.Duration(60) # seconds
+
         rospy.on_shutdown(self.shutdown_ops)
-        
-        # message to indicate that our node is active
-        rospy.loginfo(f"Node '{self.node_name}' is active...")
 
 
     def shutdown_ops(self):
@@ -36,9 +36,7 @@ class MoveEight():
         def circle_poles():
             print(f"x={(self.robot_odom.relative_posx):.2f} [m], y={(self.robot_odom.relative_posy):.2f} [m], \
 yaw={(self.robot_odom.relative_yaw):.1f} [degrees].")
-
             self.robot_controller.set_move_cmd(self.lin_vel, self.ang_vel)
-            self.robot_controller.publish()
 
             self.rate.sleep()
 
@@ -55,6 +53,7 @@ yaw={(self.robot_odom.relative_yaw):.1f} [degrees].")
         # correcting position at end so robot finish near starting position
         while self.robot_odom.relative_posy <= -0.1:
             circle_poles()
+        
         self.robot_controller.stop()
 
         # IMPROVEMENTS (simulation):

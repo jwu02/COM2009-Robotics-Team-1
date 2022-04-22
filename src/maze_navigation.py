@@ -45,7 +45,7 @@ class MazeNavigation():
                 so robot follow wall to its right at particular distance away
             """
 
-            KP = -5 # -4 to -6? -4.4, 5.7
+            KP = -5.5 # -4 to -6? -4.4, 5.7
             error = self.robot_scan.right_whisker_distance - TARGET_DIST_FROM_WALL
             self.ang_vel = KP * error
 
@@ -54,7 +54,6 @@ class MazeNavigation():
             if self.ang_vel < -self.MAX_ANG_VEL : self.ang_vel = -self.MAX_ANG_VEL
             
             self.robot_controller.set_move_cmd(self.lin_vel, self.ang_vel)
-            self.robot_controller.publish()
 
 
         while True:
@@ -84,7 +83,6 @@ class MazeNavigation():
                             self.lin_vel = 0.05
                         
                         self.robot_controller.set_move_cmd(self.lin_vel, self.MAX_ANG_VEL)
-                        self.robot_controller.publish()
 
                 elif self.robot_scan.right_max_distance <= 1.5:
                     # if no path to right, turn left
@@ -94,7 +92,6 @@ class MazeNavigation():
                             self.lin_vel = 0.05
                         
                         self.robot_controller.set_move_cmd(self.lin_vel, self.MAX_ANG_VEL)
-                        self.robot_controller.publish()
 
                 elif self.robot_scan.left_max_distance <= 1.5:
                     # if no path to left, turn right
