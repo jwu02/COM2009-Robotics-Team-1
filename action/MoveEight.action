@@ -1,6 +1,8 @@
 #goal
+bool request_signal     # A boolean signal to trigger something
 ---
 #result
+bool response_signal    # A boolean response to indicate that the action has been performed
 ---
 #feedback
 float32 x

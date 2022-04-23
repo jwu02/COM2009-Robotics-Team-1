@@ -19,6 +19,7 @@ class MoveEightClient():
 
         self.m8_client = actionlib.SimpleActionClient(MoveEightServer.ACTION_SERVER_NAME, MoveEightAction)
         self.m8_client.wait_for_server()
+        self.goal = MoveEightGoal()
         self.feedback_data = MoveEightFeedback()
 
         self.robot_controller = Tb3Move()
@@ -44,13 +45,18 @@ class MoveEightClient():
     def main(self):
         # move eight action
         # send goal to action server
-        self.m8_client.send_goal(MoveEightGoal(), feedback_cb=self.move8_feedback_cb)
+        self.goal.request_signal = True
+        self.m8_client.send_goal(self.goal, feedback_cb=self.move8_feedback_cb)
     
         while self.m8_client.get_state() < 2:
             print(f"x={self.feedback_data.x:.2f} [m], y={self.feedback_data.y:.2f} [m], \
 yaw={self.feedback_data.yaw:.1f} [degrees].")
             self.rate.sleep()
 
+        if self.m8_client.get_result().response_signal:
+            self.m8_complete = True
+            rospy.loginfo("Move eight client completed.")
+        
 
 if __name__ == '__main__':
     m8_client_instance = MoveEightClient()

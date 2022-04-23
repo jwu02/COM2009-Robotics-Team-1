@@ -23,6 +23,7 @@ class MoveEightServer(object):
         self.actionserver.start()
 
         self.feedback = MoveEightFeedback()
+        self.result = MoveEightResult()
 
         self.robot_controller = Tb3Move()
         self.robot_odom = Tb3Odometry()
@@ -42,6 +43,14 @@ class MoveEightServer(object):
 
     def action_server_launcher(self, goal: MoveEightGoal):
         self.request_time = rospy.get_rostime()
+
+        self.result.response_signal = True
+        if not goal.request_signal:
+            self.result.response_signal = False
+
+        if not self.result.response_signal:
+            self.actionserver.set_aborted()
+            return
 
         def circle_poles():
             # # check if there has been a request to cancel the action mid-way through
@@ -72,6 +81,10 @@ class MoveEightServer(object):
             circle_poles()
         
         self.robot_controller.stop()
+
+        if self.result.response_signal:
+            rospy.loginfo("Move eight action server completed.")
+            self.actionserver.set_succeeded(self.result)
 
 
 if __name__ == '__main__':
