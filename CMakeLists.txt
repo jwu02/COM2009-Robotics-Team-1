@@ -4,11 +4,14 @@ project(team1)
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
+# Find catkin macros and libraries
+# if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
+# is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rospy
+  std_msgs
+  actionlib_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -24,6 +27,32 @@ find_package(catkin REQUIRED COMPONENTS
 ## Declare ROS messages, services and actions ##
 ################################################
 
+# Generate messages in the 'msg' folder
+add_message_files(
+  FILES
+  HSVThreshold.msg
+  TargetColour.msg
+)
+
+# Generate services in the 'srv' folder
+add_service_files(
+  FILES
+  GetTargetColour.srv
+)
+
+# Generate actions in the 'action' folder
+add_action_files(
+  FILES
+  Explore.action
+)
+
+# Generate added messages and services with any dependencies listed here
+generate_messages(
+  DEPENDENCIES
+  std_msgs  # Or other packages containing msgs
+  actionlib_msgs
+)
+
 ## To declare and build messages, services or actions from within this
 ## package, follow these steps:
 ## * Let MSG_DEP_SET be the set of packages whose message types you use in
@@ -38,38 +67,13 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add "message_generation" and every package in MSG_DEP_SET to
 ##     find_package(catkin REQUIRED COMPONENTS ...)
 ##   * add "message_runtime" and every package in MSG_DEP_SET to
-##     catkin_package(CATKIN_DEPENDS ...)
+catkin_package(
+  CATKIN_DEPENDS message_runtime
+)
 ##   * uncomment the add_*_files sections below as needed
 ##     and list every .msg/.srv/.action file to be processed
 ##   * uncomment the generate_messages entry below
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
-
-## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
-
-## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
-
-## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
-
-## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
