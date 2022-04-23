@@ -8,8 +8,9 @@ from team1.srv import GetTargetColour, GetTargetColourRequest, GetTargetColourRe
 
 class GetTargetColourServer():
 
+    SERVICE_NAME = "get_target_colour_service"
+
     def __init__(self):
-        self.SERVICE_NAME = "get_target_colour_service"
         rospy.init_node(f"{self.SERVICE_NAME}_server")
 
         self.rate = rospy.Rate(10)

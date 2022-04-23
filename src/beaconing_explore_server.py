@@ -6,15 +6,15 @@ import actionlib
 from team1.msg import ExploreAction, ExploreGoal, ExploreFeedback, ExploreResult
 
 from tb3 import Tb3Move, Tb3Odometry, Tb3LaserScan
+from tb3_camera import Tb3Camera
 from random import randint, random, uniform
 
 
 class ExploreServer():
-    feedback = ExploreFeedback()
-    result = ExploreResult()
+
+    ACTION_SERVER_NAME = "explore_action_server"
 
     def __init__(self):
-        self.ACTION_SERVER_NAME = "explore_action_server"
         rospy.init_node(self.ACTION_SERVER_NAME)
 
         self.rate = rospy.Rate(10)
@@ -22,11 +22,14 @@ class ExploreServer():
         self.actionserver = actionlib.SimpleActionServer(self.ACTION_SERVER_NAME, 
             ExploreAction, self.action_server_launcher, auto_start=False)
         self.actionserver.start()
-        rospy.loginfo(f"Starting /{self.ACTION_SERVER_NAME}.")
+
+        self.feedback = ExploreFeedback()
+        self.result = ExploreResult()
 
         self.robot_controller = Tb3Move()
         self.robot_odom = Tb3Odometry()
         self.robot_scan = Tb3LaserScan()
+        self.robot_camera = Tb3Camera()
 
         self.assignment_time_limit = rospy.Duration(90) # seconds
 
@@ -36,22 +39,10 @@ class ExploreServer():
     
 
     def action_server_launcher(self, goal: ExploreGoal):
+        rospy.loginfo(f"SEARCH INITIATED: The target beacon colour is {goal.target_colour.colour}.")
 
         self.request_time = rospy.get_rostime()
 
-        # success = True
-        # if goal.fwd_velocity <= 0 or goal.fwd_velocity > 0.26:
-        #     print("Invalid fwd_velocity. Select a value between (excluding) 0 and 0.26 m/s.")
-        #     success = False
-        # if goal.approach_distance <= 0: # what's max distance LaserScan sensor can provide?
-        #     print("Invalid approach_distance. Select a positive value!")
-        #     success = False
-
-        # if not success:
-        #     self.actionserver.set_aborted()
-        #     return
-        
-        #=================================================== 
         AVOIDANCE_DISTANCE = 0.4
 
 
@@ -93,7 +84,7 @@ class ExploreServer():
                 
                 step_distance_travelled = self.robot_odom.total_distance - self.previous_distance_travelled
 
-                print(f"STEP SIZE: {step_size}, TRAVELLED: {step_distance_travelled}")
+                print(f"DISPLACEMENT: {self.robot_odom.displacement}")
 
                 if step_distance_travelled < step_size:
                     # keep moving while step size not reached
@@ -115,7 +106,7 @@ class ExploreServer():
                     step_size = generate_step_size()
                     self.previous_distance_travelled = self.robot_odom.total_distance
 
-            #===================================================
+            # ===================================================
 
             # check if there has been a request to cancel the action mid-way through:
             if self.actionserver.is_preempt_requested():
@@ -125,24 +116,19 @@ class ExploreServer():
                 success = False
                 break
 
-            feedback = ExploreFeedback()
-            result = ExploreResult()
-
             # # feedback data to client
             # self.feedback
             # self.actionserver.publish_feedback(self.feedback)
-        
-            # if success:
-            #     rospy.loginfo("Object detection completed sucessfully.")
-                
-            #     self.result.total_distance_travelled = self.feedback.current_distance_travelled
-            #     self.result.closest_object_distance = self.robot_scan.min_distance
-            #     self.result.closest_object_angle = self.robot_scan.closest_object_position
-
-            #     self.actionserver.set_succeeded(self.result)
-            #     self.robot_controller.stop()
 
             self.rate.sleep()
+        
+        if success:
+            rospy.loginfo("BEACONING COMPLETE: The robot has now stopped.")
+            
+            # self.result.
+
+            # self.actionserver.set_succeeded(self.result)
+            # self.robot_controller.stop()
             
 
 if __name__ == '__main__':

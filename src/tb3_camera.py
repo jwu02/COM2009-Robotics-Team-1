@@ -66,11 +66,10 @@ class Tb3Camera(object):
 
                     # identify target colour by finding colour mask with greatest number of 1s
                     if len(masks.keys()) == 0:
-                        print("No target beacon colour identified.")
+                        rospy.loginfo("No target beacon colour identified.")
                     else:
                         self.target_colour = str(max(masks, key=masks.get))
                         self.target_hsv = hsv_data[self.target_colour]
-                        print(f"SEARCH INITIATED: The target beacon colour is {self.target_colour.capitalize()}.")
 
                 except yaml.YAMLError as e:
                     print(e)

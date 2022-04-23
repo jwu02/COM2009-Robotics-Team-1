@@ -6,6 +6,9 @@ import actionlib
 from team1.srv import GetTargetColour, GetTargetColourRequest, GetTargetColourResponse
 from team1.msg import ExploreAction, ExploreGoal, ExploreFeedback, ExploreResult
 
+from beaconing_explore_server import ExploreServer
+from beaconing_get_target_colour_server import GetTargetColourServer
+
 from tb3 import Tb3Move, Tb3Odometry, Tb3LaserScan
 
 import cv2
@@ -13,8 +16,9 @@ import cv2
 
 class BeaconingClient():
 
+    CLIENT_NAME = "beaconing_client"
+
     def __init__(self):
-        self.CLIENT_NAME = "beaconing_client"
         rospy.init_node(self.CLIENT_NAME)
 
         self.rate = rospy.Rate(10)
@@ -25,7 +29,7 @@ class BeaconingClient():
 
         self.exploration_complete = False
 
-        self.explore_client = actionlib.SimpleActionClient("explore_action_server", ExploreAction)
+        self.explore_client = actionlib.SimpleActionClient(ExploreServer.ACTION_SERVER_NAME, ExploreAction)
         self.explore_client.wait_for_server()
         self.explore_goal = ExploreGoal() # represents the target colour label and HSV thresholds
 
@@ -51,10 +55,10 @@ class BeaconingClient():
 
 
     def main(self):
-        rospy.wait_for_service("get_target_colour_service")
+        rospy.wait_for_service(GetTargetColourServer.SERVICE_NAME)
         # create connection to service once it's running and specify service message type
         # so rospy.ServiceProxy() can process messages appropriately
-        get_target_colour_service = rospy.ServiceProxy("get_target_colour_service", GetTargetColour)
+        get_target_colour_service = rospy.ServiceProxy(GetTargetColourServer.SERVICE_NAME, GetTargetColour)
 
         # use rospy.ServiceProxy() instance to send service request message to service 
         # and obtain response back from server

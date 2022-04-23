@@ -64,8 +64,8 @@ class Tb3Odometry(object):
         self.relative_posy = ((self.posx-self.posx0)*sin(self.plane_rotation_angle) + \
                                 (self.posy-self.posy0)*cos(self.plane_rotation_angle)) + self.posy0
 
-        # # calculate robot displacement from original start point
-        # self.displacement = sqrt((self.posx-self.posx0)**2 + (self.posy-self.posy0)**2)
+        # calculate robot displacement from original start point
+        self.displacement = sqrt((self.posx-self.posx0)**2 + (self.posy-self.posy0)**2)
 
         # calculate total distance travelled for Levy flights step size
         # by adding small increments to the total everytime the robot moves
