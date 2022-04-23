@@ -58,12 +58,6 @@ class Tb3Camera(object):
                         # to get rid of image pixels with mask value False
                         filtered_img = cv2.bitwise_and(cropped_img, cropped_img, mask = img_mask)
 
-                        # # display image in pop-up window
-                        # cv2.imshow("filtered image", filtered_img)
-                        # # 0 = wait indefinitely before executing rest of code
-                        # # value x = wait x miliseconds before closing pop-up window down
-                        # cv2.waitKey(0)
-
                         # store number of "True" pixels for each mask with colour we are interested in
                         # print(np.array(img_mask))
                         true_pixel_count = np.count_nonzero((np.array(img_mask).flatten() == 255))
@@ -74,13 +68,40 @@ class Tb3Camera(object):
                     if len(masks.keys()) == 0:
                         print("No target beacon colour identified.")
                     else:
-                        self.TARGET_COLOUR = max(masks, key=masks.get)
-                        print(f"SEARCH INITIATED: The target beacon colour is {self.TARGET_COLOUR.capitalize()}.")
+                        self.target_colour = str(max(masks, key=masks.get))
+                        self.target_hsv = hsv_data[self.target_colour]
+                        print(f"SEARCH INITIATED: The target beacon colour is {self.target_colour.capitalize()}.")
 
                 except yaml.YAMLError as e:
                     print(e)
             
             self.get_target_colour = False
+        
+        if self.target_hsv:
+            lower_threshold = (self.target_hsv['h']['min'], self.target_hsv['s']['min'], 100)
+            upper_threshold = (self.target_hsv['h']['max'], self.target_hsv['s']['max'], 255)
+
+            img_mask = cv2.inRange(hsv_img, lower_threshold, upper_threshold)
+            filtered_img = cv2.bitwise_and(cropped_img, cropped_img, mask = img_mask)
+
+            # calcualte centroid (central coordinate) of a blob of colour 
+            # using principle of image moments
+
+            # provide Boolean mask to obtain moments of colour blob
+            m = cv2.moments(img_mask)
+            # determining central point
+            cy = m['m10'] / (m['m00'] + 1e-5)
+            cz = m['m01'] / (m['m00'] + 1e-5)
+
+            # displaying camera feedback for testing
+            cv2.circle(filtered_img, (int(cy), int(cz)), 10, (255, 0, 0), 2)
+            cv2.imshow("filtered image", filtered_img)
+            cv2.waitKey(1)
+
+            # using cetroid component cy to determine how far robot needs to turn
+            # to keep target beacon in sight / centre of vision
+            self.y_error = cy - (crop_width / 2) # difference bewteen actual and target position
+            
 
 
     def __init__(self):
@@ -88,4 +109,7 @@ class Tb3Camera(object):
         self.cvbridge_interface = CvBridge()
 
         self.get_target_colour = False
-        self.TARGET_COLOUR = None
+        self.target_colour = None
+        self.target_hsv = None
+
+        self.y_error = None
