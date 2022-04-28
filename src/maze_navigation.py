@@ -15,15 +15,15 @@ class MazeNavigation():
         rospy.init_node(self.node_name)
         self.rate = rospy.Rate(100)
 
-        # importing external classes
-        # simplify process of obtaining odometry data and controlling the robot
         self.robot_controller = Tb3Move()
         self.robot_odom = Tb3Odometry()
         self.robot_scan = Tb3LaserScan()
 
-        self.lin_vel = 0.15
+        self.lin_vel = 0.26
         self.ang_vel = 0.0
-        self.MAX_ANG_VEL = 1.82
+        self.lim_ang_vel = 0.0
+
+        self.ASSIGNMENT_TIME_LIMIT = rospy.Duration(150) # seconds
 
         rospy.on_shutdown(self.shutdown_ops)
 
@@ -33,11 +33,13 @@ class MazeNavigation():
 
 
     def main(self):
-        TARGET_DIST_FROM_WALL = 0.3
-        FRONT_STOPPING_DISTANCE = 0.4
+
+        self.request_time = rospy.get_rostime()
+
+        AVOIDANCE_DISTANCE = 0.35
 
         # limiting angular velocity to avoid excessive angle changes when error is too big
-        self.MAX_ANG_VEL = self.lin_vel / TARGET_DIST_FROM_WALL * 1.75
+        self.lim_ang_vel = (self.lin_vel / AVOIDANCE_DISTANCE) * 1.5
 
 
         def follow_right_wall():
@@ -45,65 +47,64 @@ class MazeNavigation():
                 so robot follow wall to its right at particular distance away
             """
 
-            KP = -5.5 # -4 to -6? -4.4, 5.7
-            error = self.robot_scan.right_whisker_distance - TARGET_DIST_FROM_WALL
+            KP = -5.5 # -5 to -5.7?
+            error = self.robot_scan.right_whisker_distance - AVOIDANCE_DISTANCE
             self.ang_vel = KP * error
 
             # sanitising data published to topic
-            if self.ang_vel > self.MAX_ANG_VEL : self.ang_vel = self.MAX_ANG_VEL
-            if self.ang_vel < -self.MAX_ANG_VEL : self.ang_vel = -self.MAX_ANG_VEL
+            if self.ang_vel > self.lim_ang_vel:
+                self.ang_vel = self.lim_ang_vel
+            if self.ang_vel < -self.lim_ang_vel:
+                self.ang_vel = -self.lim_ang_vel
             
             self.robot_controller.set_move_cmd(self.lin_vel, self.ang_vel)
 
-
-        while True:
-            # accelerate if open area ahead and robot not turning too much
-            if self.robot_scan.front_min_distance > 1 and \
-                self.ang_vel >= -0.2 and self.ang_vel <= 0.2:
-                self.lin_vel = 0.25
-            else:
-                self.lin_vel = 0.25
+        def no_path_right() -> bool:
+            return self.robot_scan.right_max_distance < AVOIDANCE_DISTANCE*3
+        
+        def no_path_left() -> bool:
+            return self.robot_scan.left_max_distance < AVOIDANCE_DISTANCE*3
+        
+        def turn_till_path(ang_vel=0.0):
+            self.robot_controller.stop()
             
-            if self.robot_scan.front_min_distance <= FRONT_STOPPING_DISTANCE and \
+            # turn till there is a path in front of robot
+            while self.robot_scan.front_min_distance < AVOIDANCE_DISTANCE*2:
+                lin_vel = 0
+
+                if self.robot_scan.rear_min_distance < AVOIDANCE_DISTANCE-0.1:
+                    # rear end potentially stuck against wall
+                    # increase ang_vel in direction robot is turning to repel its back away from wall
+                    lin_vel = 0.05 # too high robot will accelerate into wall
+
+                    if ang_vel > 0:
+                        self.robot_controller.set_move_cmd(lin_vel, ang_vel)
+                    else:
+                        self.robot_controller.set_move_cmd(lin_vel, ang_vel)
+                else:
+                    self.robot_controller.set_move_cmd(0.0, ang_vel)
+            
+
+        while rospy.get_rostime() < (self.request_time + self.ASSIGNMENT_TIME_LIMIT + rospy.Duration(20)):
+
+            if self.robot_scan.front_min_distance <= AVOIDANCE_DISTANCE+0.1 and \
                 self.robot_scan.front_max_distance <= 1:
                 # adding the second condition makes sure the robot doesn't spin around at some tight junctions
-                
                 # IMPROVEMENT: alternative way to determine which turn to take?
                 #               and how much to turn?
 
                 # might cause robot to spin around tight areas sometimes
-                if self.robot_scan.right_max_distance <= 1 and \
-                    self.robot_scan.left_max_distance <= 1:
-                    # if deadend turn around (by turning left)
-                    while self.robot_scan.front_min_distance <= 0.8:
-                        # IMPROVEMENT: add condition for when turning, 
-                        #   if rear of robot close to wall, increase linear velocity
-                        self.lin_vel = 0
-                        if self.robot_scan.rear_min_distance <= 0.25: # rear end potentially stuck against wall
-                            self.lin_vel = 0.05
-                        
-                        self.robot_controller.set_move_cmd(self.lin_vel, self.MAX_ANG_VEL)
+                if no_path_right and no_path_left:
+                    turn_till_path(self.lim_ang_vel) # turn left
 
-                elif self.robot_scan.right_max_distance <= 1.5:
-                    # if no path to right, turn left
-                    while self.robot_scan.front_min_distance <= 0.8:
-                        self.lin_vel = 0
-                        if self.robot_scan.rear_min_distance <= 0.25: # rear end potentially stuck against wall
-                            self.lin_vel = 0.05
-                        
-                        self.robot_controller.set_move_cmd(self.lin_vel, self.MAX_ANG_VEL)
+                elif no_path_right:
+                    turn_till_path(self.lim_ang_vel) # turn left
 
-                elif self.robot_scan.left_max_distance <= 1.5:
-                    # if no path to left, turn right
-                    while self.robot_scan.front_min_distance <= 0.8:
-                        self.lin_vel = 0
-                        if self.robot_scan.rear_min_distance <= 0.25: # rear end potentially stuck against wall
-                            self.lin_vel = 0.05
-                        
-                        self.robot_controller.set_move_cmd(self.lin_vel, -self.MAX_ANG_VEL)
+                elif no_path_left:
+                    turn_till_path(-self.lim_ang_vel) # turn right
                     
             else:
-                # if possible move forward
+                # if possible move forward and follow right wall
                 follow_right_wall()
 
             self.rate.sleep()
