@@ -39,6 +39,12 @@ class ExploreServer():
     
 
     def action_server_launcher(self, goal: ExploreGoal):
+        success = True
+        if not goal.target_colour.colour: success = False
+        if not success:
+            self.actionserver.set_aborted()
+            return
+        
         rospy.loginfo(f"SEARCH INITIATED: The target beacon colour is {goal.target_colour.colour}.")
 
         self.request_time = rospy.get_rostime()
@@ -52,13 +58,15 @@ class ExploreServer():
             """
 
             # simulate a long tailed distribution
-            LEVY_DISTRIBUTION = [0,0,0,0,1]
+            LEVY_DISTRIBUTION = [0,0,0,0,0,1]
 
             # generate random step size
             if LEVY_DISTRIBUTION[randint(0, len(LEVY_DISTRIBUTION))-1] == 0:
-                return 0.3 + random() * 0.5 # return 0.3-0.8 m
+                # short distance movements are more often
+                return 0.2 + random() * 0.3 # return 0.2-0.5 m
             else:
-                return 1.5 + random() * 2.5 # return 1.5-3 m
+                # long distance movements are less often
+                return 2 + random() * 1 # return 2-3 m
         
 
         step_size = generate_step_size()
