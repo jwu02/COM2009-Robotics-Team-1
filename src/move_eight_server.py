@@ -70,11 +70,19 @@ class MoveEightServer(object):
             self.robot_controller.set_move_cmd(self.lin_vel, self.ang_vel)
             self.rate.sleep()
 
+        # incase relative_yaw >355 to start with, and while loop below ends before robot gets to move
+        while not (self.robot_odom.relative_yaw < 10):
+            circle_poles()
+
         # first loop (red)
         while not (self.robot_odom.relative_yaw > 355):
             circle_poles()
             
         self.ang_vel *= -1
+
+        # incase relative_yaw <5 after loop 1, and while loop below ends before robot gets to move
+        while not (self.robot_odom.relative_yaw > 345):
+            circle_poles()
         
         # second loop (blue)
         while not (self.robot_odom.relative_yaw < 5):

@@ -1,6 +1,4 @@
 <launch>
-  <!-- <node pkg="team1" type="move_eight.py" name="move_eight" output="screen">
-  </node> -->
   <node pkg="team1" type="move_eight_server.py" name="move_eight_server" output="screen">
   </node>
   <node pkg="team1" type="move_eight_client.py" name="move_eight_client" output="screen">
