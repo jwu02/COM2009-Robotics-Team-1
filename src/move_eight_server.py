@@ -3,6 +3,7 @@
 import rospy
 import actionlib
 
+from std_msgs.msg import Empty
 from team1.msg import MoveEightAction, MoveEightGoal, MoveEightFeedback, MoveEightResult
 
 from tb3 import Tb3Move, Tb3Odometry
@@ -33,6 +34,10 @@ class MoveEightServer(object):
         self.ang_vel = self.lin_vel / self.PATH_RADIUS
 
         self.assignment_time_limit = rospy.Duration(60) # +- 5 seconds
+
+        # self.empty_publisher = rospy.Publisher('/reset', Empty, queue_size=10)
+        # # real robot subscribes to a /reset topic can be used reset its odometry to zero at its current position
+        # self.empty_publisher.publish(Empty())
 
         rospy.on_shutdown(self.shutdown_ops)
 
@@ -79,10 +84,11 @@ class MoveEightServer(object):
             circle_poles()
             
         self.ang_vel *= -1
+        # self.empty_publisher.publish(Empty())
 
-        # incase relative_yaw <5 after loop 1, and while loop below ends before robot gets to move
-        while not (self.robot_odom.relative_yaw > 345):
-            circle_poles()
+        # # incase relative_yaw <5 after loop 1, and while loop below ends before robot gets to move
+        # while not (self.robot_odom.relative_yaw > 355):
+        #     circle_poles()
         
         # second loop (blue)
         while not (self.robot_odom.relative_yaw < 5):
