@@ -3,6 +3,8 @@
   </node>
   <node pkg="team1" type="beaconing_get_target_colour_server.py" name="beaconing_get_target_colour_server" output="screen">
   </node>
-  <node pkg="team1" type="beaconing_explore_server.py" name="beaconing_explore_server" output="screen">
+  <node pkg="team1" type="beaconing_explore_server.py" name="explore_action_server" output="screen">
+  </node>
+  <node pkg="team1" type="beaconing_server.py" name="beaconing_action_server" output="screen">
   </node>
 </launch>

@@ -4,13 +4,13 @@ import rospy
 import actionlib
 
 from team1.msg import ExploreAction, ExploreGoal, ExploreFeedback, ExploreResult
+from team1.msg import BeaconingAction, BeaconingGoal, BeaconingFeedback, BeaconingResult
 
-from tb3 import Tb3Move, Tb3Odometry
+from beaconing_server import BeaconingServer
+
+from tb3 import Tb3Move, Tb3Odometry, Tb3LaserScan
 from tb3_camera import Tb3Camera
 from random import randint, random, uniform, choice
-
-from sensor_msgs.msg import LaserScan
-import numpy as np
 
 
 class ExploreServer():
@@ -37,24 +37,34 @@ class ExploreServer():
         self.assignment_time_limit = rospy.Duration(90) # seconds
 
         self.lin_vel = 0.2
+        self.ang_vel = 0
         # to calculate if robot has travelled the step_size required
         self.previous_distance_travelled = self.robot_odom.total_distance
+
+        self.target_detected = False
+
+        self.beaconing_goal = BeaconingGoal()
+        self.beaconing_client = actionlib.SimpleActionClient(BeaconingServer.ACTION_SERVER_NAME, BeaconingAction)
+        self.beaconing_client.wait_for_server()
     
 
+    def beaconing_feedback_cb(self, feedback_data: BeaconingFeedback):
+        """/beaconing_action_server feedback"""
+        self.feedback.target_pixel_count = self.robot_camera.target_pixel_count
+
+
     def action_server_launcher(self, goal: ExploreGoal):
-        success = True
-        if not goal.target_colour.colour: success = False
-        if not success:
+        self.request_time = rospy.get_rostime()
+
+        if not goal.target_colour.colour:
             self.actionserver.set_aborted()
             return
         
-        rospy.loginfo(f"SEARCH INITIATED: The target beacon colour is {goal.target_colour.colour}.")
-
-        self.request_time = rospy.get_rostime()
+        self.robot_camera.target_colour = goal.target_colour
 
         AVOIDANCE_DISTANCE = 0.4
 
-        def generate_step_size() -> float:
+        def generate_step_size():
             """
             Generate random step size for Levy flights exploration behaviour
             """
@@ -63,19 +73,20 @@ class ExploreServer():
             LEVY_DISTRIBUTION = [0,0,0,0,1]
 
             # generate random step size
-            if choice(LEVY_DISTRIBUTION) == 0:
-                # short distance movements are more often
-                return 1 + random()*0.5 # return 1-1.5 m
+            if LEVY_DISTRIBUTION[randint(0, len(LEVY_DISTRIBUTION))-1] == 0:
+                return 2 + random() * 2 # return 1.5-3 m
             else:
-                # long distance movements are less often
-                return 2 + random()*1 # return 2-3 m
+                return 2 + random() * 2 # return 1.5-3 m
         
         step_size = generate_step_size()
 
         def turn_till_path(ang_vel=0.0):
+            """
+            Turn till there is a path in front of the robot
+            """
+
             self.robot_controller.stop()
             
-            # turn till there is a path in front of robot
             while self.robot_scan.front_min_distance < AVOIDANCE_DISTANCE*2:
                 if self.robot_scan.rear_min_distance <= AVOIDANCE_DISTANCE-0.1:
                     # rear end potentially stuck against wall
@@ -86,28 +97,74 @@ class ExploreServer():
                         self.robot_controller.set_move_cmd(self.lin_vel, ang_vel-0.5)
                 else:
                     self.robot_controller.set_move_cmd(0.0, ang_vel)
+                    # if target_colour_detected: break
+                    # if self.robot_camera.target_pixel_count > 0:
+                    #     rospy.loginfo("TARGET DETECTED: Beaconing initiated. (WHILE TURNING)")
 
         def left_path() -> bool:
+            """
+            Determine if there is a path to the left
+            """
             return self.robot_scan.left_max_distance > AVOIDANCE_DISTANCE*3
 
         def right_path() -> bool:
+            """
+            Determine if there is a path to the right
+            """
             return self.robot_scan.right_max_distance > AVOIDANCE_DISTANCE*3
+        
+        # def target_colour_detected() -> bool:
+        #     if self.robot_odom.displacement > 1 and self.robot_camera.target_pixel_count > 5000:
+        #         # initiate beaconing action server
+        #         self.target_detected = True
+        #         rospy.loginfo("TARGET DETECTED: Beaconing initiated.")
+
+        #         self.beaconing_goal = goal
+        #         self.beaconing_client.send_goal(self.beaconing_goal, feedback_cb=self.beaconing_feedback_cb)
+        #         print("ummmmmm")
+        #         while self.beaconing_client.get_state() < 2:
+        #             self.rate.sleep()
+                
+        #         return True
+        #     else:
+        #         self.target_detected = False
+        #         return False
+        
 
         while rospy.get_rostime() < (self.request_time + self.assignment_time_limit + rospy.Duration(20)):
 
             # if obstacle detected ahead
             if self.robot_scan.front_min_distance <= AVOIDANCE_DISTANCE:
                 self.robot_controller.stop()
-                rospy.logwarn("TOOOO CLOSE")
 
-                if (left_path and right_path) or not (left_path and right_path):
+                if left_path and right_path:
+                    # if path in both directions, turn towards side with greatest distance reading
+                    if self.robot_scan.left_max_distance > self.robot_scan.right_max_distance:
+                        turn_till_path(1)
+                    else:
+                        turn_till_path(-1)
+                elif not (left_path and right_path):
                     turn_till_path(choice([-1, 1])) # turn in random direction until path in front
                 elif left_path:
-                    turn_till_path(1.0) # turn left until path in front
+                    turn_till_path(1) # turn left
                 elif right_path:
-                    turn_till_path(-1.0) # turn right until path in front
+                    turn_till_path(-1) # turn right
             
             else: # just move forward if no obstacle ahead
+                    
+                # if self.robot_odom.displacement > 1 and self.robot_camera.target_pixel_count > 5000:
+                #     self.robot_controller.stop()
+
+                #     self.target_detected = True
+
+                #     # initiate beaconing action server
+                #     self.beaconing_goal = goal
+                #     self.beaconing_client.send_goal(self.beaconing_goal, feedback_cb=self.beaconing_feedback_cb)
+                #     while self.beaconing_client.get_state() < 2:
+                #         self.rate.sleep()
+
+                # else:
+                    
                 step_distance_travelled = self.robot_odom.total_distance - self.previous_distance_travelled
 
                 # move step size generated from Levy flights
@@ -122,7 +179,7 @@ class ExploreServer():
                     # keep moving while step size not reached
                     self.robot_controller.set_move_cmd(self.lin_vel, repel_ang_vel)
 
-                    print(f"STEP SIZE: {step_size}[m]. TRAVELLED: {step_distance_travelled}[m].")
+                    # print(f"STEP SIZE: {step_size}[m]. TRAVELLED: {step_distance_travelled}[m].")
                 else:
                     # if step size reached
                     self.robot_controller.stop()
@@ -138,6 +195,7 @@ class ExploreServer():
                     step_size = generate_step_size()
                     self.previous_distance_travelled = self.robot_odom.total_distance
 
+
             # ===================================================
 
             # check if there has been a request to cancel the action mid-way through:
@@ -145,57 +203,20 @@ class ExploreServer():
                 rospy.loginfo("Cancelling exploration.")
                 self.actionserver.set_preempted()
                 self.robot_controller.stop()
-                success = False
                 break
-
-            # # feedback data to client
-            # self.feedback
-            # self.actionserver.publish_feedback(self.feedback)
+            
+            # feedback data
+            self.feedback.target_pixel_count = self.robot_camera.target_pixel_count
+            self.feedback.displacement = self.robot_odom.displacement
+            self.actionserver.publish_feedback(self.feedback)
 
             self.rate.sleep()
-        
-        if success:
-            rospy.loginfo("BEACONING COMPLETE: The robot has now stopped.")
-            
-            # self.result.
-
-            # self.actionserver.set_succeeded(self.result)
-            # self.robot_controller.stop()
-
-
-class Tb3LaserScan(object):
-    def laserscan_cb(self, scan_data: LaserScan):
-
-        front_region = np.array((scan_data.ranges[-20:] + scan_data.ranges[0:21])[::-1])
-        self.front_min_distance = front_region.min()
-        
-        left_region = np.array(scan_data.ranges[20:70][::-1])
-        self.left_min_distance = left_region.min()
-        self.left_max_distance = left_region.max()
-
-        right_region = np.array(scan_data.ranges[290:340][::-1])
-        self.right_min_distance = right_region.min()
-        self.right_max_distance = right_region.max()
-
-        rear_region = np.array(scan_data.ranges[120:240])
-        self.rear_min_distance = rear_region.min()
-
-
-    def __init__(self):
-        self.subscriber = rospy.Subscriber('/scan', LaserScan, self.laserscan_cb)
-
-        self.front_min_distance = 0.0
-        self.front_max_distance = 0.0
-
-        self.left_min_distance = 0.0
-        self.left_max_distance = 0.0
-        
-        self.right_min_distance = 0.0
-        self.right_max_distance = 0.0
-
-        self.rear_min_distance = 0.0
 
 
 if __name__ == '__main__':
     ExploreServer()
+    # beaconing_action_server = BeaconingServer(
+    #     explore_action_server.robot_odom, 
+    #     explore_action_server.robot_scan, 
+    #     explore_action_server.robot_camera)
     rospy.spin()

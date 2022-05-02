@@ -2,6 +2,7 @@
 
 import rospy
 from sensor_msgs.msg import Image
+from team1.msg import TargetColour
 import numpy as np
 
 import os
@@ -21,8 +22,8 @@ class Tb3Camera(object):
         height, width, channels = cv_img.shape
         
         # cropping original image to a more manageable file size
-        crop_width = width - 400
-        crop_height = 400
+        crop_width = 1000
+        crop_height = 100
         crop_y0 = int((width / 2) - (crop_width / 2))
         crop_z0 = int((height / 2) - (crop_height / 2))
         cropped_img = cv_img[crop_z0:crop_z0+crop_height, crop_y0:crop_y0+crop_width]
@@ -56,7 +57,7 @@ class Tb3Camera(object):
 
                         # mask applied to image using Bitwise AND operation
                         # to get rid of image pixels with mask value False
-                        filtered_img = cv2.bitwise_and(cropped_img, cropped_img, mask = img_mask)
+                        filtered_img = cv2.bitwise_and(cropped_img, cropped_img, mask=img_mask)
 
                         # store number of "True" pixels for each mask with colour we are interested in
                         # print(np.array(img_mask))
@@ -68,20 +69,25 @@ class Tb3Camera(object):
                     if len(masks.keys()) == 0:
                         rospy.loginfo("No target beacon colour identified.")
                     else:
-                        self.target_colour = str(max(masks, key=masks.get))
-                        self.target_hsv = hsv_data[self.target_colour]
+                        self.target_colour.colour = max(masks, key=masks.get)
+                        self.target_hsv = hsv_data[self.target_colour.colour]
+                        self.target_colour.h.min = self.target_hsv['h']['min']
+                        self.target_colour.h.max = self.target_hsv['h']['max']
+                        self.target_colour.s.min = self.target_hsv['s']['min']
+                        self.target_colour.s.max = self.target_hsv['s']['max']
 
                 except yaml.YAMLError as e:
                     print(e)
             
             self.get_target_colour = False
         
-        if self.target_hsv:
-            lower_threshold = (self.target_hsv['h']['min'], self.target_hsv['s']['min'], 100)
-            upper_threshold = (self.target_hsv['h']['max'], self.target_hsv['s']['max'], 255)
+        if self.target_colour:
+            lower_threshold = (self.target_colour.h.min, self.target_colour.s.min, 100)
+            upper_threshold = (self.target_colour.h.max, self.target_colour.s.max, 255)
 
             img_mask = cv2.inRange(hsv_img, lower_threshold, upper_threshold)
-            filtered_img = cv2.bitwise_and(cropped_img, cropped_img, mask = img_mask)
+            self.target_pixel_count = np.count_nonzero((np.array(img_mask).flatten() == 255))
+            filtered_img = cv2.bitwise_and(cropped_img, cropped_img, mask=img_mask)
 
             # calcualte centroid (central coordinate) of a blob of colour 
             # using principle of image moments
@@ -102,13 +108,16 @@ class Tb3Camera(object):
             self.y_error = cy - (crop_width / 2) # difference bewteen actual and target position
             
 
-
     def __init__(self):
         self.img_sub = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_cb)
         self.cvbridge_interface = CvBridge()
 
         self.get_target_colour = False
-        self.target_colour = None
-        self.target_hsv = None
+        self.target_colour = TargetColour()
+        # self.target_hsv = {
+        #     'h': {'min': 0, 'max': 0},
+        #     's': {'min': 0, 'max': 0}
+        # }
 
-        self.y_error = None
+        self.y_error = 0
+        self.target_pixel_count = 0

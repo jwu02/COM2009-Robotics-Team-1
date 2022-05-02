@@ -5,11 +5,13 @@ import actionlib
 
 from team1.srv import GetTargetColour, GetTargetColourRequest, GetTargetColourResponse
 from team1.msg import ExploreAction, ExploreGoal, ExploreFeedback, ExploreResult
+from team1.msg import BeaconingAction, BeaconingGoal, BeaconingFeedback, BeaconingResult
 
-from beaconing_explore_server import ExploreServer
 from beaconing_get_target_colour_server import GetTargetColourServer
+from beaconing_explore_server import ExploreServer
+from beaconing_server import BeaconingServer
 
-from tb3 import Tb3Move, Tb3Odometry, Tb3LaserScan
+from tb3 import Tb3Move
 
 import cv2
 
@@ -24,14 +26,20 @@ class BeaconingClient():
         self.rate = rospy.Rate(10)
 
         self.robot_controller = Tb3Move()
-        self.robot_odom = Tb3Odometry()
-        self.robot_scan = Tb3LaserScan()
 
         self.exploration_complete = False
 
         self.explore_client = actionlib.SimpleActionClient(ExploreServer.ACTION_SERVER_NAME, ExploreAction)
         self.explore_client.wait_for_server()
         self.explore_goal = ExploreGoal() # represents the target colour label and HSV thresholds
+
+        self.beaconing_client = actionlib.SimpleActionClient(BeaconingServer.ACTION_SERVER_NAME, BeaconingAction)
+        self.beaconing_client.wait_for_server()
+        self.beaconing_goal = BeaconingGoal()
+
+        self.target_pixel_count = 0
+        self.displacement = 0
+        self.beaconing_success = False
 
         rospy.on_shutdown(self.shutdown_ops)
 
@@ -50,9 +58,15 @@ class BeaconingClient():
     
     def explore_feedback_cb(self, feedback_data: ExploreFeedback):
         """/explore_action_server feedback"""
+        self.target_pixel_count = feedback_data.target_pixel_count
+        self.displacement = feedback_data.displacement
 
+
+    def beaconing_feedback_cb(self, feedback_data: BeaconingFeedback):
+        """/beaconing_action_server feedback"""
         pass
-
+        # self.feedback.target_pixel_count = self.robot_camera.target_pixel_count
+    
 
     def main(self):
         rospy.wait_for_service(GetTargetColourServer.SERVICE_NAME)
@@ -63,16 +77,27 @@ class BeaconingClient():
         # use rospy.ServiceProxy() instance to send service request message to service 
         # and obtain response back from server
         get_target_colour_service_response = get_target_colour_service(GetTargetColourRequest())
-        print(get_target_colour_service_response)
 
         # explore action
         self.explore_goal = get_target_colour_service_response
         # send goal to action server
-        self.explore_client.send_goal(self.explore_goal, feedback_cb=self.explore_feedback_cb)
+        rospy.loginfo(f"SEARCH INITIATED: The target beacon colour is {self.explore_goal.target_colour.colour}.")
+        
+        while not self.beaconing_success:
+            self.explore_client.send_goal(self.explore_goal, feedback_cb=self.explore_feedback_cb)
+            while self.displacement < 1 and self.target_pixel_count < 5000:
+                self.rate.sleep()
+            self.explore_client.cancel_goal()
 
-        while self.explore_client.get_state() < 2:
-            self.rate.sleep()
-
+            rospy.loginfo("TARGET DETECTED: Beaconing initiated.")
+            self.beaconing_goal = self.explore_goal
+            self.beaconing_client.send_goal(self.beaconing_goal, feedback_cb=self.beaconing_feedback_cb)
+            while self.beaconing_client.get_state() < 2:
+                # print(self.target_pixel_count)
+                self.rate.sleep()
+        
+        if self.beaconing_success:
+            rospy.loginfo("BEACONING COMPLETE: The robot has now stopped.")
 
 
 if __name__ == '__main__':

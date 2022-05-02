@@ -16,7 +16,6 @@ class GetTargetColourServer():
         self.rate = rospy.Rate(10)
 
         my_service = rospy.Service(self.SERVICE_NAME, GetTargetColour, self.service_cb)
-        rospy.loginfo(f"Starting /{self.SERVICE_NAME}")
 
         self.robot_controller = Tb3Move()
         self.robot_odom = Tb3Odometry()
@@ -27,17 +26,12 @@ class GetTargetColourServer():
         service_response = GetTargetColourResponse()
 
         # determine target colour by analysing start zone robot placed in
-        self.turn(angle=180, angular=0.5)
+        self.turn(angle=180, angular=1.2)
         self.robot_camera.get_target_colour = True
-        self.turn(angle=180, angular=0.5)
+        self.turn(angle=180, angular=1.2)
 
-        if self.robot_camera.target_colour and self.robot_camera.target_hsv:
-            service_response.target_colour.colour = self.robot_camera.target_colour
-            service_response.target_colour.h.min = self.robot_camera.target_hsv['h']['min']
-            service_response.target_colour.h.max = self.robot_camera.target_hsv['h']['max']
-            service_response.target_colour.s.min = self.robot_camera.target_hsv['s']['min']
-            service_response.target_colour.s.max = self.robot_camera.target_hsv['s']['max']
-        
+        if self.robot_camera.target_colour:
+            service_response.target_colour = self.robot_camera.target_colour
             return service_response
 
 

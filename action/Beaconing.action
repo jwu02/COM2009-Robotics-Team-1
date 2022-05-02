@@ -1,0 +1,7 @@
+#goal
+TargetColour target_colour  # Target colour label and HSV thresholds
+---
+#result
+bool beaconing_success      # A boolean response to indicate that the action has been performed
+---
+#feedback

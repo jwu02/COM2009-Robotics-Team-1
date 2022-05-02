@@ -12,3 +12,6 @@
 
 ## Bash aliases
 - `./bash_aliases` contains handy shortcuts for launching assignment related nodes which you can copy into `/home/student/.bash_aliases`
+
+## Resources
+- built in message data types http://wiki.ros.org/msg

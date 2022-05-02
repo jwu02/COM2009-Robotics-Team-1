@@ -1,0 +1,7 @@
+# for beacon exploration
+1. explore area with Levy flights algorithm
+2. turn around to scan vision for target beacon
+3. if target colour detected beacon action client towards it
+4. if target colour in >90% of vision stop, stop in front of it
+
+beacon -> if target lost -> wall follow

@@ -43,7 +43,7 @@ class Tb3Odometry(object):
             # initial startup position
             self.yaw0 = self.yaw
             self.posx0 = self.posx
-            self.posy0 = self.posx
+            self.posy0 = self.posy
 
             # position of last odom callback
             self.previous_x = self.posx
@@ -91,7 +91,7 @@ class Tb3Odometry(object):
         self.relative_posy = 0.0
         self.relative_yaw = 0.0
 
-        # self.displacement = 0.0
+        self.displacement = 0.0
 
         self.plane_rotation_angle = 0.0
         
@@ -107,51 +107,36 @@ class Tb3Odometry(object):
         value = int(value * (10**precision))
         return float(value) / (10**precision)
 
+
 class Tb3LaserScan(object):
     def laserscan_cb(self, scan_data: LaserScan):
 
-        # front_arc = np.array(scan_data.ranges[0:21][::-1] + scan_data.ranges[-20:][::-1])
-        # self.min_distance = front_arc.min()
-        # arc_angles = np.arange(-20, 21)
-        # self.closest_object_position = arc_angles[np.argmin(front_arc)]
-
-        #============================
         front_region = np.array((scan_data.ranges[-20:] + scan_data.ranges[0:21])[::-1])
-        left_region = np.array(scan_data.ranges[21:62][::-1])
-        right_region = np.array(scan_data.ranges[-40:340][::-1])
-        
-        front_arc = np.concatenate([left_region, front_region, right_region])
-        self.min_distance = front_arc.min()
-        arc_angles = np.arange(-60, 61)
-        self.closest_object_position = arc_angles[np.argmin(front_arc)]
+        left_region = np.array(scan_data.ranges[20:70][::-1])
+        right_region = np.array(scan_data.ranges[290:340][::-1])
+        rear_region = np.array(scan_data.ranges[120:240])
 
         self.front_min_distance = front_region.min()
-        self.front_max_distance = front_region.max()
-        self.straight_ahead_distance = scan_data.ranges[0]
-
-        self.full_min_distance = np.array(scan_data.ranges).min()
-        self.full_max_distance = np.array(scan_data.ranges).max()
-
+        
+        self.left_min_distance = left_region.min()
         self.left_max_distance = left_region.max()
+
+        self.right_min_distance = right_region.min()
         self.right_max_distance = right_region.max()
 
-        
+        self.rear_min_distance = rear_region.min()
+
+
     def __init__(self):
-        self.min_distance = 0.0
-        self.closest_object_position = 0.0 # degrees
         self.subscriber = rospy.Subscriber('/scan', LaserScan, self.laserscan_cb)
 
-        #=============================
-        self.front_min_distance = 0.0
-        self.front_closest_object_angle = 0
-        self.front_max_distance = 0.0
-        self.straight_ahead_distance = 0.0
+        self.front_min_distance = 0
+        self.front_max_distance = 0
 
-        self.full_min_distance = 0.0
-        self.full_max_distance = 0.0
-
-        self.left_max_distance = 0.0
+        self.left_min_distance = 0
+        self.left_max_distance = 0
         
-        self.right_max_distance = 0.0
-        self.right_whisker_distance = 0.0
-    
+        self.right_min_distance = 0
+        self.right_max_distance = 0
+
+        self.rear_min_distance = 0
