@@ -25,9 +25,6 @@ class BeaconingServer():
         self.result = BeaconingResult()
 
         self.robot_controller = Tb3Move()
-        # self.robot_odom = robot_odom
-        # self.robot_scan = robot_scan
-        # self.robot_camera = robot_camera
         self.robot_odom = Tb3Odometry()
         self.robot_scan = Tb3LaserScan()
         self.robot_camera = Tb3Camera()
@@ -70,9 +67,6 @@ class BeaconingServer():
                         self.robot_controller.set_move_cmd(self.lin_vel, ang_vel-0.5)
                 else:
                     self.robot_controller.set_move_cmd(0.0, ang_vel)
-                    # if target_colour_detected: break
-                    # if self.robot_camera.target_pixel_count > 0:
-                    #     rospy.loginfo("TARGET DETECTED: Beaconing initiated. (WHILE TURNING)")
 
         while True:
             # closed loop control to adjust robot ang_vel so center of vision
@@ -105,7 +99,6 @@ class BeaconingServer():
             # and close enough to target beacon that most of robot's vision filled with target colour pixels
             if self.robot_odom.displacement > 2 and self.robot_camera.target_pixel_count >= 100000:
                 # break out of loop for success
-                # print("test valid")
                 while self.robot_scan.front_min_distance > 0.4:
                     self.robot_controller.set_move_cmd(self.lin_vel, 0)
 
