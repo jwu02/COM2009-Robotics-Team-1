@@ -99,9 +99,9 @@ class Tb3Camera(object):
             cz = m['m01'] / (m['m00'] + 1e-5)
 
             # displaying camera feedback for testing
-            cv2.circle(filtered_img, (int(cy), int(cz)), 10, (255, 0, 0), 2)
-            cv2.imshow("filtered image", filtered_img)
-            cv2.waitKey(1)
+            # cv2.circle(filtered_img, (int(cy), int(cz)), 10, (255, 0, 0), 2)
+            # cv2.imshow("filtered image", filtered_img)
+            # cv2.waitKey(1)
 
             # using cetroid component cy to determine how far robot needs to turn
             # to keep target beacon in sight / centre of vision

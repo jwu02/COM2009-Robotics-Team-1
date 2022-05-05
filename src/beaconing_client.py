@@ -80,23 +80,25 @@ class BeaconingClient():
 
         # explore action
         self.explore_goal = get_target_colour_service_response
-        # send goal to action server
+        # send goal to exploration action server
         rospy.loginfo(f"SEARCH INITIATED: The target beacon colour is {self.explore_goal.target_colour.colour}.")
         
-        while not self.beaconing_success:
-            self.explore_client.send_goal(self.explore_goal, feedback_cb=self.explore_feedback_cb)
-            while self.displacement < 1 and self.target_pixel_count < 5000:
-                self.rate.sleep()
-            self.explore_client.cancel_goal()
+        self.explore_client.send_goal(self.explore_goal, feedback_cb=self.explore_feedback_cb)
+        # object detected valid only if robot 1m outside of starting point
+        # to not confuse starting zone colour with beacon colour
+        while not (self.displacement > 1 and self.target_pixel_count > 5000):
+            self.rate.sleep()
+        self.explore_client.cancel_goal()
 
-            rospy.loginfo("TARGET DETECTED: Beaconing initiated.")
-            self.beaconing_goal = self.explore_goal
-            self.beaconing_client.send_goal(self.beaconing_goal, feedback_cb=self.beaconing_feedback_cb)
-            while self.beaconing_client.get_state() < 2:
-                # print(self.target_pixel_count)
-                self.rate.sleep()
+        # send beaconing goal to another action server with different behaviour to beacon towards detected target
+        rospy.loginfo("TARGET DETECTED: Beaconing initiated.")
+        self.beaconing_goal = self.explore_goal
+        self.beaconing_client.send_goal(self.beaconing_goal, feedback_cb=self.beaconing_feedback_cb)
+        while self.beaconing_client.get_state() < 2:
+            self.rate.sleep()
         
-        if self.beaconing_success:
+        # success message
+        if self.beaconing_client.get_result().beaconing_success:
             rospy.loginfo("BEACONING COMPLETE: The robot has now stopped.")
 
 

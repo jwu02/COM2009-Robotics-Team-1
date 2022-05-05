@@ -74,9 +74,9 @@ class ExploreServer():
 
             # generate random step size
             if LEVY_DISTRIBUTION[randint(0, len(LEVY_DISTRIBUTION))-1] == 0:
-                return 2 + random() * 2 # return 1.5-3 m
+                return 1 + random() * 2 # return 1.5-3 m
             else:
-                return 2 + random() * 2 # return 1.5-3 m
+                return 3 + random() * 2 # return 1.5-3 m
         
         step_size = generate_step_size()
 
@@ -165,42 +165,42 @@ class ExploreServer():
 
                 # else:
                     
-                step_distance_travelled = self.robot_odom.total_distance - self.previous_distance_travelled
+                # step_distance_travelled = self.robot_odom.total_distance - self.previous_distance_travelled
 
                 # move step size generated from Levy flights
-                if step_distance_travelled < step_size:
+                # if step_distance_travelled < step_size:
                     # repel away from objects if coming too close from side
-                    repel_ang_vel = 0.0
-                    if self.robot_scan.left_min_distance < AVOIDANCE_DISTANCE*1.5:
-                        repel_ang_vel = -0.2
-                    elif self.robot_scan.right_min_distance < AVOIDANCE_DISTANCE*1.5:
-                        repel_ang_vel = 0.2
+                repel_ang_vel = 0.0
+                if self.robot_scan.left_min_distance < AVOIDANCE_DISTANCE*1.5:
+                    repel_ang_vel = -0.3
+                elif self.robot_scan.right_min_distance < AVOIDANCE_DISTANCE*1.5:
+                    repel_ang_vel = 0.3
 
-                    # keep moving while step size not reached
-                    self.robot_controller.set_move_cmd(self.lin_vel, repel_ang_vel)
+                # keep moving while step size not reached
+                self.robot_controller.set_move_cmd(self.lin_vel, repel_ang_vel)
 
                     # print(f"STEP SIZE: {step_size}[m]. TRAVELLED: {step_distance_travelled}[m].")
-                else:
-                    # if step size reached
-                    self.robot_controller.stop()
+                # else:
+                #     # if step size reached
+                #     self.robot_controller.stop()
 
-                    # turn toward random direction for short random period of time
-                    last_time = rospy.get_rostime()
-                    random_ang_vel = uniform(1, 1.5) * choice([-1, 1])
-                    random_turn_time = rospy.Duration(randint(1, 2))
-                    while rospy.get_rostime() < last_time + random_turn_time:
-                        self.robot_controller.set_move_cmd(0.0, random_ang_vel)
+                #     # turn toward random direction for short random period of time
+                #     last_time = rospy.get_rostime()
+                #     random_ang_vel = uniform(1, 1.5) * choice([-1, 1])
+                #     random_turn_time = rospy.Duration(randint(1, 2))
+                #     while rospy.get_rostime() < last_time + random_turn_time:
+                #         self.robot_controller.set_move_cmd(0.0, random_ang_vel)
 
-                    # generate a new step size
-                    step_size = generate_step_size()
-                    self.previous_distance_travelled = self.robot_odom.total_distance
+                #     # generate a new step size
+                #     step_size = generate_step_size()
+                #     self.previous_distance_travelled = self.robot_odom.total_distance
 
 
             # ===================================================
 
             # check if there has been a request to cancel the action mid-way through:
             if self.actionserver.is_preempt_requested():
-                rospy.loginfo("Cancelling exploration.")
+                # rospy.loginfo("Cancelling exploration action.")
                 self.actionserver.set_preempted()
                 self.robot_controller.stop()
                 break
