@@ -1,6 +1,6 @@
 red:
   h:
-    min: -1
+    min: 0
     max: 2
   s:
     min: 206

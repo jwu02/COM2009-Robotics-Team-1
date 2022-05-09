@@ -1,0 +1,19 @@
+Task 5 algorithm draft
+
+Move foward if possible
+    if path to left
+        turn left
+    else
+        moveforward until obstacle ahead
+        if path left turn left else turn right
+    
+    if turn left no path to left
+        follow wall left
+    else
+        follow wall right
+
+    store position and orientation and turn command in array topological_map
+
+Things to note for task 5
+- detecting colours lot harder in real world than simulation, do lots of testing
+- the topic camera data is published to on real robot is named different

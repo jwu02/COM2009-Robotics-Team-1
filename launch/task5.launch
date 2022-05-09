@@ -1,0 +1,13 @@
+<launch>
+  <arg name="target_colour" default="yellow" />
+
+  <!-- use include to launch other launch files outside package -->
+  <include file="$(find turtlebot3_slam)/launch/turtlebot3_slam.launch" />
+  <node pkg="team1" type="exploration_map_getter.py" name="exploration_map_getter" output="screen" />
+
+  <!-- -target_colour is the command-line arguments of the Python Node -->
+  <!-- target_colour the command-line arguments of the launch file -->
+  <node pkg="team1" type="exploration_client.py" name="exploration_client" output="screen" 
+    args="-target_colour $(arg target_colour)"/>
+  <node pkg="team1" type="exploration_server.py" name="exploration_action_server" output="screen" />
+</launch>

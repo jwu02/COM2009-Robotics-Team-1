@@ -46,6 +46,7 @@ add_action_files(
   MoveEight.action
   Explore.action
   Beaconing.action
+  Task5Exploration.action
 )
 
 # Generate added messages and services with any dependencies listed here
