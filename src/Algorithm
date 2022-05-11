@@ -17,3 +17,16 @@ Move foward if possible
 Things to note for task 5
 - detecting colours lot harder in real world than simulation, do lots of testing
 - the topic camera data is published to on real robot is named different
+
+
+
+
+=============== new algorithm
+exploration strategy - levy flights
+    if obstacle encountered follow wall depending on left or right
+        instead of turning away from obstacle
+
+============= current problems
+
+============== guarantee some marks
+- store picture of any beacon unless picture of target beacon already taken

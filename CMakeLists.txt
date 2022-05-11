@@ -38,6 +38,7 @@ add_message_files(
 add_service_files(
   FILES
   GetTargetColour.srv
+  CaptureImage.srv
 )
 
 # Generate actions in the 'action' folder

@@ -3,11 +3,19 @@
 import rospy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import LaserScan, Image
+from team1.msg import TargetColour
+
 # import the function to convert orientation from quaternions to angles
 from tf.transformations import euler_from_quaternion
 from math import degrees, sqrt, sin, cos, radians
 import numpy as np
+
+import os
+import yaml
+
+import cv2
+from cv_bridge import CvBridge, CvBridgeError
 
 
 class Tb3Move(object):
@@ -140,3 +148,77 @@ class Tb3LaserScan(object):
         self.right_max_distance = 0
 
         self.rear_min_distance = 0
+
+
+class Tb3Camera(object):
+    def camera_cb(self, img_data: Image):
+        try:
+            # specifying conversion (or encoding) to 8-bit BGR (blue-green-red) image format
+            cv_img = self.cvbridge_interface.imgmsg_to_cv2(img_data, desired_encoding="bgr8")
+        except CvBridgeError as e:
+            print(e)
+        
+        height, width, channels = cv_img.shape
+        
+        # cropping original image to a more manageable file size
+        crop_width = 1600
+        crop_height = 100
+        crop_y0 = int((width / 2) - (crop_width / 2))
+        crop_z0 = int((height / 2) - (crop_height / 2))
+        cropped_img = cv_img[crop_z0:crop_z0+crop_height, crop_y0:crop_y0+crop_width]
+
+        # masking - apply filter to pixels to discard any pixel data that isn't 
+        # related to colour of interest
+        # convert cropped image into HSV colour space, makes process easier
+        hsv_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2HSV)
+        
+        if self.target_colour:
+            if not self.target_colour_captured:
+                for c in self.TASK5_COLOURS:
+                
+                    
+                    lower_threshold = (self.target_colour.h.min, self.target_colour.s.min, 100)
+                    upper_threshold = (self.target_colour.h.max, self.target_colour.s.max, 255)
+
+                    img_mask = cv2.inRange(hsv_img, lower_threshold, upper_threshold)
+                    self.target_pixel_count = np.count_nonzero((np.array(img_mask).flatten() == 255))
+                    print(self.target_pixel_count)
+                    filtered_img = cv2.bitwise_and(cropped_img, cropped_img, mask=img_mask)
+
+                    # displaying camera feedback for testing
+                    cv2.imshow("filtered image", filtered_img)
+                    cv2.waitKey(1)
+
+            lower_threshold = (self.target_colour.h.min, self.target_colour.s.min, 100)
+            upper_threshold = (self.target_colour.h.max, self.target_colour.s.max, 255)
+
+            img_mask = cv2.inRange(hsv_img, lower_threshold, upper_threshold)
+            self.target_pixel_count = np.count_nonzero((np.array(img_mask).flatten() == 255))
+            print(self.target_pixel_count)
+            filtered_img = cv2.bitwise_and(cropped_img, cropped_img, mask=img_mask)
+
+            # displaying camera feedback for testing
+            cv2.imshow("filtered image", filtered_img)
+            cv2.waitKey(1)
+            
+
+    def __init__(self):
+        self.img_sub = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_cb)
+        self.cvbridge_interface = CvBridge()
+
+        self.get_target_colour = False
+        self.target_colour = TargetColour()
+
+        self.target_pixel_count = 0
+
+        self.TASK5_COLOURS = ["yellow", "red", "green", "blue"]
+        self.target_colour_captured = False
+
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        hsv_data_file = os.path.join(current_dir, 'hsv_data.yaml')
+        hsv_data = dict()
+        with open(hsv_data_file, "r") as stream:
+            try:
+                hsv_data = yaml.safe_load(stream)
+            except yaml.YAMLError as e:
+                    print(e)

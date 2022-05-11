@@ -1,0 +1,5 @@
+#request
+bool request_signal     # A boolean signal to trigger something
+---
+#response
+bool response_signal    # A boolean response to indicate that the service has been performed

@@ -4,12 +4,15 @@ import rospy
 import actionlib
 
 from team1.msg import Task5ExplorationAction, Task5ExplorationGoal, Task5ExplorationFeedback, Task5ExplorationResult
+from team1.srv import CaptureImage, CaptureImageRequest, CaptureImageResponse
 
-from tb3 import Tb3Move, Tb3Odometry
+from exploration_capture_image_server import CaptureImageServer
+
+from tb3 import Tb3Move, Tb3Odometry, Tb3Camera
 
 from sensor_msgs.msg import LaserScan
 import numpy as np
-from random import choice
+from random import choice, randint, random, uniform
 
 
 class ExploreServer():
@@ -31,20 +34,27 @@ class ExploreServer():
         self.robot_controller = Tb3Move()
         self.robot_odom = Tb3Odometry()
         self.robot_scan = Tb3LaserScan()
+        self.robot_camera = Tb3Camera()
 
-        self.assignment_time_limit = rospy.Duration(90) # seconds
+        self.assignment_time_limit = rospy.Duration(180) # seconds
 
-        self.lin_vel = 0.15
+        self.lin_vel = 0.17
         self.ang_vel = 0.0
+        self.follow_wall = False
         self.wall_to_follow = "left"
+        # to calculate if robot has travelled the step_size required
+        self.previous_distance_travelled = self.robot_odom.total_distance
+
+        self.beacon_image_captured = False
     
 
     def action_server_launcher(self, goal: Task5ExplorationGoal):
         self.request_time = rospy.get_rostime()
+        self.robot_camera.target_colour = goal.target_colour
 
-        AVOIDANCE_DISTANCE = 0.35
+        AVOIDANCE_DISTANCE = 0.3
         # limiting ang_vel velocity to avoid excessive angle changes when error is too big
-        self.lim_ang_vel = (self.lin_vel / AVOIDANCE_DISTANCE) * 1.2
+        self.lim_ang_vel = (self.lin_vel / AVOIDANCE_DISTANCE) * 1.5
 
         def follow_wall(direction):
             """
@@ -71,16 +81,35 @@ class ExploreServer():
             print(f"{direction=}")
             self.robot_controller.set_move_cmd(self.lin_vel, self.ang_vel)
 
-        def turn_till_path(ang_vel=0.0):
+        def generate_step_size() -> float:
+            """
+            Generate random step size for Levy flights exploration behaviour
+            """
+
+            # simulate a long tailed distribution
+            LEVY_DISTRIBUTION = [0,0,0,0,1,1]
+
+            # generate random step size
+            x = choice(LEVY_DISTRIBUTION)
+            if x==0: return 2 + random()*1
+            elif x==1: return 8 + random()*2
+
+        
+        step_size = generate_step_size()
+
+        def turn_till_path(ang_vel=0.0) -> None:
             self.robot_controller.stop()
-            
+
             # turn till there is a path in front of robot
-            while not (self.robot_scan.front_min_distance > AVOIDANCE_DISTANCE*2):
-                if self.robot_scan.rear_min_distance <= AVOIDANCE_DISTANCE-0.1:
+            while not (self.robot_scan.front_min_distance > AVOIDANCE_DISTANCE*1.5):
+                if self.robot_scan.rear_min_distance <= AVOIDANCE_DISTANCE*0.6:
                     # rear end potentially stuck against wall
-                    self.robot_controller.set_move_cmd(self.lin_vel, ang_vel)
+                    self.robot_controller.set_move_cmd(0.15, ang_vel)
                 else:
                     self.robot_controller.set_move_cmd(0.0, ang_vel)
+
+                if not self.beacon_image_captured and (self.robot_camera.target_pixel_count > 10000):
+                    capture_image()
 
         def left_path() -> bool:
             return self.robot_scan.left_max_distance > AVOIDANCE_DISTANCE*2
@@ -88,39 +117,84 @@ class ExploreServer():
         def right_path() -> bool:
             return self.robot_scan.right_max_distance > AVOIDANCE_DISTANCE*2
 
-        while rospy.get_rostime() < (self.request_time + self.assignment_time_limit + rospy.Duration(20)):
+        def choose_wall() -> None:
+            """
+            Follow closet wall
+            """
+            if self.robot_scan.left_min_distance < self.robot_scan.right_min_distance:
+                self.wall_to_follow = "left"
+            else:
+                self.wall_to_follow = "right"
+
+        def capture_image():
+            rospy.wait_for_service(CaptureImageServer.SERVICE_NAME)
+            # create connection to service once it's running and specify service message type
+            # so rospy.ServiceProxy() can process messages appropriately
+            get_target_colour_service = rospy.ServiceProxy(CaptureImageServer.SERVICE_NAME, CaptureImage)
+
+            # use rospy.ServiceProxy() instance to send service request message to service 
+            # and obtain response back from server
+            service_request = CaptureImageRequest()
+            service_request.request_signal = True
+            get_target_colour_service_response = get_target_colour_service(service_request)
+
+            if get_target_colour_service_response: # .get_response().response_signal
+                self.beacon_image_captured = True
+        
+
+        while rospy.get_rostime() < (self.request_time + self.assignment_time_limit + rospy.Duration(180)):
             
             # if obstacle detected ahead
-            if self.robot_scan.front_min_distance <= AVOIDANCE_DISTANCE:
+            if self.robot_scan.front_min_distance <= AVOIDANCE_DISTANCE*1.2:
                 self.robot_controller.stop()
+                self.follow_wall = True
                 # rospy.logwarn("TOOOO CLOSE")
 
                 # if (left_path() and right_path()) or not (left_path() and right_path()):
-                #     turn_till_path(choice([-1, 1])) # turn in random direction until path in front
+                #     turn_direction = choice([-1, 1])
+                #     turn_till_path(turn_direction) # turn in random direction until path in front
+                #     choose_wall()
                 if left_path():
                     turn_till_path(1) # turn left
-                    self.wall_to_follow = "right"
+                    choose_wall()
                 elif right_path():
                     turn_till_path(-1) # turn right
-                    self.wall_to_follow = "left"
+                    choose_wall()
+                elif (left_path() and right_path()) or not (left_path() and right_path()):
+                    turn_direction = choice([-1, 1])
+                    turn_till_path(turn_direction) # turn in random direction until path in front
+                    choose_wall()
             
             else: # if no obstacle detected
-                if self.ang_vel < 0.5 and self.ang_vel > -0.5 and self.robot_scan.front_min_distance < AVOIDANCE_DISTANCE:
-                    # to let robot reach end of path without following wall entirely
-                    self.robot_controller.set_move_cmd(self.lin_vel, 0.0)
-                else:
-                    if self.wall_to_follow == "left":
-                        if self.robot_scan.left_perp_distance > AVOIDANCE_DISTANCE*2:
-                            # go straight ahead if upcoming path to left, instead of wall following
-                            self.robot_controller.set_move_cmd(self.lin_vel, 0.0)
-                        elif self.robot_scan.left_upper_distance < AVOIDANCE_DISTANCE*2:
-                            follow_wall(self.wall_to_follow)
+                if not self.beacon_image_captured and (self.robot_camera.target_pixel_count > 10000):
+                    capture_image()
 
-                    elif self.wall_to_follow == "right":
-                        if self.robot_scan.right_perp_distance > AVOIDANCE_DISTANCE*2:
-                            self.robot_controller.set_move_cmd(self.lin_vel, 0.0)
-                        elif self.robot_scan.right_upper_distance < AVOIDANCE_DISTANCE*2:
-                            follow_wall(self.wall_to_follow)
+                step_distance_travelled = self.robot_odom.total_distance - self.previous_distance_travelled
+
+                # move step size generated from Levy flights
+                if step_distance_travelled < step_size:
+                    if self.follow_wall: # follow_wall = True if obstacle detected
+                        follow_wall(self.wall_to_follow)
+                    else:
+                        # keep moving while step size not reached
+                        self.robot_controller.set_move_cmd(self.lin_vel, 0)
+
+                    print(f"{step_size=}[m]. {step_distance_travelled=}[m].")
+                else:
+                    # if step size reached
+                    self.follow_wall = False
+                    self.robot_controller.stop()
+
+                    # turn toward random direction for short random period of time
+                    last_time = rospy.get_rostime()
+                    random_ang_vel = uniform(1, 1.5) * choice([-1, 1])
+                    random_turn_time = rospy.Duration(randint(1, 2))
+                    while rospy.get_rostime() < last_time + random_turn_time:
+                        self.robot_controller.set_move_cmd(0.0, random_ang_vel)
+
+                    # generate a new step size
+                    step_size = generate_step_size()
+                    self.previous_distance_travelled = self.robot_odom.total_distance
 
             self.rate.sleep()
             
@@ -129,8 +203,8 @@ class Tb3LaserScan(object):
     def laserscan_cb(self, scan_data: LaserScan):
 
         front_region = np.array((scan_data.ranges[-20:] + scan_data.ranges[0:21])[::-1])
-        left_region = np.array(scan_data.ranges[80:100][::-1])
-        right_region = np.array(scan_data.ranges[260:280][::-1])
+        left_region = np.array(scan_data.ranges[90-20:90+20][::-1])
+        right_region = np.array(scan_data.ranges[270-20:270+20][::-1])
         rear_region = np.array(scan_data.ranges[120:240])
 
         self.front_distance = scan_data.ranges[0]
