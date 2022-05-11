@@ -22,7 +22,7 @@ class ExploreServer():
     def __init__(self):
         rospy.init_node(self.ACTION_SERVER_NAME)
 
-        self.rate = rospy.Rate(10)
+        self.rate = rospy.Rate(20)
 
         self.actionserver = actionlib.SimpleActionServer(self.ACTION_SERVER_NAME, 
             Task5ExplorationAction, self.action_server_launcher, auto_start=False)
@@ -78,7 +78,6 @@ class ExploreServer():
             if self.ang_vel < -self.lim_ang_vel:
                 self.ang_vel = -self.lim_ang_vel
             
-            print(f"{direction=}")
             self.robot_controller.set_move_cmd(self.lin_vel, self.ang_vel)
 
         def generate_step_size() -> float:
@@ -87,12 +86,12 @@ class ExploreServer():
             """
 
             # simulate a long tailed distribution
-            LEVY_DISTRIBUTION = [0,0,0,0,1,1]
+            LEVY_DISTRIBUTION = [0,0,0,1,1]
 
             # generate random step size
             x = choice(LEVY_DISTRIBUTION)
             if x==0: return 2 + random()*1
-            elif x==1: return 8 + random()*2
+            elif x==1: return 7 + random()*2
 
         
         step_size = generate_step_size()
@@ -102,9 +101,9 @@ class ExploreServer():
 
             # turn till there is a path in front of robot
             while not (self.robot_scan.front_min_distance > AVOIDANCE_DISTANCE*1.5):
-                if self.robot_scan.rear_min_distance <= AVOIDANCE_DISTANCE*0.6:
+                if self.robot_scan.rear_min_distance <= AVOIDANCE_DISTANCE*0.7:
                     # rear end potentially stuck against wall
-                    self.robot_controller.set_move_cmd(0.15, ang_vel)
+                    self.robot_controller.set_move_cmd(0.05, ang_vel)
                 else:
                     self.robot_controller.set_move_cmd(0.0, ang_vel)
 
@@ -148,12 +147,7 @@ class ExploreServer():
             if self.robot_scan.front_min_distance <= AVOIDANCE_DISTANCE*1.2:
                 self.robot_controller.stop()
                 self.follow_wall = True
-                # rospy.logwarn("TOOOO CLOSE")
 
-                # if (left_path() and right_path()) or not (left_path() and right_path()):
-                #     turn_direction = choice([-1, 1])
-                #     turn_till_path(turn_direction) # turn in random direction until path in front
-                #     choose_wall()
                 if left_path():
                     turn_till_path(1) # turn left
                     choose_wall()
@@ -179,7 +173,7 @@ class ExploreServer():
                         # keep moving while step size not reached
                         self.robot_controller.set_move_cmd(self.lin_vel, 0)
 
-                    print(f"{step_size=}[m]. {step_distance_travelled=}[m].")
+                    # print(f"{step_size=}[m]. {step_distance_travelled=}[m].")
                 else:
                     # if step size reached
                     self.follow_wall = False

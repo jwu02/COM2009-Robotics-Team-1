@@ -182,7 +182,6 @@ class Tb3Camera(object):
 
                     img_mask = cv2.inRange(hsv_img, lower_threshold, upper_threshold)
                     self.target_pixel_count = np.count_nonzero((np.array(img_mask).flatten() == 255))
-                    print(self.target_pixel_count)
                     filtered_img = cv2.bitwise_and(cropped_img, cropped_img, mask=img_mask)
 
                     # displaying camera feedback for testing
@@ -194,7 +193,6 @@ class Tb3Camera(object):
 
             img_mask = cv2.inRange(hsv_img, lower_threshold, upper_threshold)
             self.target_pixel_count = np.count_nonzero((np.array(img_mask).flatten() == 255))
-            print(self.target_pixel_count)
             filtered_img = cv2.bitwise_and(cropped_img, cropped_img, mask=img_mask)
 
             # displaying camera feedback for testing
