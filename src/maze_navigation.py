@@ -85,7 +85,7 @@ class MazeNavigation():
                     self.robot_controller.set_move_cmd(0.0, ang_vel)
             
 
-        while rospy.get_rostime() < (self.request_time + self.ASSIGNMENT_TIME_LIMIT + rospy.Duration(20)):
+        while rospy.get_rostime() < (self.request_time + self.ASSIGNMENT_TIME_LIMIT + rospy.Duration(150)):
 
             if self.robot_scan.front_min_distance <= AVOIDANCE_DISTANCE+0.1 and \
                 self.robot_scan.front_max_distance <= 1:

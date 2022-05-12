@@ -12,11 +12,12 @@ Move foward if possible
     else
         follow wall right
 
-    store position and orientation and turn command in array topological_map
+    store position and orientation and turn command in array topological_map?
 
-============= current problems
+=============== current problems
 - detecting colours lot harder in real world than simulation, lots of testing needed
-- the topic camera data is published to on real robot is named different
+- turtlebot3_slam package doesn't exist on local env
+- robot just spins around in some cases (tune self.lim_ang_vel?)
 
-============== guarantee some marks
+=============== guarantee some marks
 - store picture of any beacon unless picture of target beacon already taken

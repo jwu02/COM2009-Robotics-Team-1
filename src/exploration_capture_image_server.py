@@ -22,6 +22,8 @@ class CaptureImageServer():
         my_service = rospy.Service(self.SERVICE_NAME, CaptureImage, self.service_cb)
         self.service_response = CaptureImageResponse()
 
+        # /camera/color/image_raw (on real robot)
+        # /camera/rgb/image_raw (in simulation)
         rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_cb)
 
         self.get_image = False

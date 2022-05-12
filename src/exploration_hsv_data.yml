@@ -1,0 +1,31 @@
+yellow:
+  h:
+    min: 20
+    max: 26
+  s:
+    min: 150
+    max: 210
+
+blue:
+  h:
+    min: 98
+    max: 105
+  s:
+    min: 148
+    max: 240
+
+red:
+  h:
+    min: 172
+    max: 181
+  s:
+    min: 148
+    max: 200
+
+green:
+  h:
+    min: 80
+    max: 87
+  s:
+    min: 180
+    max: 255

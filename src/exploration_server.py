@@ -86,11 +86,11 @@ class ExploreServer():
             """
 
             # simulate a long tailed distribution
-            LEVY_DISTRIBUTION = [0,0,0,1,1]
+            LEVY_DISTRIBUTION = [0,0,0,1,1,1]
 
             # generate random step size
             x = choice(LEVY_DISTRIBUTION)
-            if x==0: return 2 + random()*1
+            if x==0: return 1 + random()*1
             elif x==1: return 7 + random()*2
 
         
@@ -144,7 +144,7 @@ class ExploreServer():
         while rospy.get_rostime() < (self.request_time + self.assignment_time_limit + rospy.Duration(180)):
             
             # if obstacle detected ahead
-            if self.robot_scan.front_min_distance <= AVOIDANCE_DISTANCE*1.2:
+            if self.robot_scan.front_min_distance <= AVOIDANCE_DISTANCE*1:
                 self.robot_controller.stop()
                 self.follow_wall = True
 
@@ -173,7 +173,7 @@ class ExploreServer():
                         # keep moving while step size not reached
                         self.robot_controller.set_move_cmd(self.lin_vel, 0)
 
-                    # print(f"{step_size=}[m]. {step_distance_travelled=}[m].")
+                    print(f"{step_size=}[m]. {step_distance_travelled=}[m].")
                 else:
                     # if step size reached
                     self.follow_wall = False
@@ -209,13 +209,14 @@ class Tb3LaserScan(object):
         self.left_max_distance = left_region.max()
         self.left_upper_distance = scan_data.ranges[50]
         self.left_perp_distance = scan_data.ranges[90]
-        self.left_whisker_distance = scan_data.ranges[60]
+        wisker_angle = 60
+        self.left_whisker_distance = scan_data.ranges[wisker_angle]
 
         self.right_min_distance = right_region.min()
         self.right_max_distance = right_region.max()
         self.right_upper_distance = scan_data.ranges[-50]
         self.right_perp_distance = scan_data.ranges[-90]
-        self.right_whisker_distance = scan_data.ranges[-60]
+        self.right_whisker_distance = scan_data.ranges[-wisker_angle]
 
         self.rear_min_distance = rear_region.min()
 
