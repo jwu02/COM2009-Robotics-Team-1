@@ -9,6 +9,7 @@ from tb3 import Tb3Move, Tb3Odometry
 from random import randint, random, uniform, choice
 
 from sensor_msgs.msg import LaserScan
+from geometry_msgs.msg import PoseStamped
 import numpy as np
 
 
@@ -41,6 +42,25 @@ class ExploreServer():
 
         self.wall_to_follow = "left"
         self.follow_wall = False
+
+        # self.move_base_pub = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=10)
+        # self.zone_coordinates = [
+        #     (-1.5, 0), # zone 2
+        #     (-1.5, 1.5), # zone 3
+        #     (0, 1.5), # zone 6
+        #     (1.5, 1.5), # zone 9
+        #     (1.5, 0), # zone 8
+        #     (1.5, -1.5), # zone 7
+        #     (0, -1.5), # zone 4
+        #     (-1.5, -1.5), # zone 1
+        # ]
+
+        # self.nav_goal = PoseStamped()
+        # self.nav_goal.header.frame_id = "map"
+        # self.nav_goal.pose.orientation.w = 1.0
+        # self.nav_goal.pose.position.x = self.zone_coordinates[0][0]
+        # self.nav_goal.pose.position.y = self.zone_coordinates[0][1]
+
     
 
     def action_server_launcher(self, goal: ExploreGoal):
@@ -72,15 +92,15 @@ class ExploreServer():
             
             # turn till there is a path in front of robot
             while self.robot_scan.front_min_distance < AVOIDANCE_DISTANCE*2:
-                if self.robot_scan.rear_min_distance <= AVOIDANCE_DISTANCE-0.1:
-                    # rear end potentially stuck against wall
-                    # increase ang_vel in direction robot is turning to repel its back away from wall
-                    if ang_vel > 0:
-                        self.robot_controller.set_move_cmd(0.1, ang_vel+0.5)
-                    else:
-                        self.robot_controller.set_move_cmd(0.1, ang_vel-0.5)
-                else:
-                    self.robot_controller.set_move_cmd(0.0, ang_vel)
+                # if self.robot_scan.rear_min_distance <= AVOIDANCE_DISTANCE-0.1:
+                #     # rear end potentially stuck against wall
+                #     # increase ang_vel in direction robot is turning to repel its back away from wall
+                #     if ang_vel > 0:
+                #         self.robot_controller.set_move_cmd(0.1, ang_vel+0.5)
+                #     else:
+                #         self.robot_controller.set_move_cmd(0.1, ang_vel-0.5)
+                # else:
+                self.robot_controller.set_move_cmd(0.0, ang_vel)
 
         def left_path() -> bool:
             return self.robot_scan.left_max_distance > AVOIDANCE_DISTANCE*3
@@ -123,6 +143,8 @@ class ExploreServer():
 
 
         while rospy.get_rostime() < (self.request_time + self.assignment_time_limit + rospy.Duration(180)):
+
+            # self.move_base_pub.publish(self.nav_goal)
             
             # if obstacle detected ahead
             if self.robot_scan.front_min_distance <= AVOIDANCE_DISTANCE*1.2:
@@ -142,6 +164,7 @@ class ExploreServer():
                     choose_wall()
             
             else: # if no obstacle detected
+                print(f"{self.robot_odom.posx=} {self.robot_odom.posy=}")
                 
                 if self.follow_wall:
                     step_distance_travelled = self.robot_odom.total_distance - self.previous_distance_travelled
@@ -156,7 +179,7 @@ class ExploreServer():
 
                         self.follow_wall = False # stop following wall
 
-                    print(f"{step_size=}[m]. {step_distance_travelled=}[m].")
+                    # print(f"{step_size=}[m]. {step_distance_travelled=}[m].")
                 else: # if not following wall just go straight forward
                     self.robot_controller.set_move_cmd(self.lin_vel, 0.0)
 
@@ -167,7 +190,7 @@ class ExploreServer():
 class Tb3LaserScan(object):
     def laserscan_cb(self, scan_data: LaserScan):
 
-        front_region = np.array((scan_data.ranges[-30:] + scan_data.ranges[0:31])[::-1])
+        front_region = np.array((scan_data.ranges[-25:] + scan_data.ranges[0:26])[::-1])
         left_region = np.array(scan_data.ranges[90-20:90+20][::-1])
         right_region = np.array(scan_data.ranges[270-20:270+20][::-1])
         rear_region = np.array(scan_data.ranges[120:240])

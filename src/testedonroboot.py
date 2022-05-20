@@ -69,7 +69,7 @@ class ExploreServer():
             else:
                 print("Invalid direction please supply either 'left' or 'right'.")
                 
-            KP = -6 # -5 to -6?
+            KP = -4 # -5 to -6?
             self.ang_vel = KP * error
 
             # sanitising data published to topic
@@ -97,6 +97,8 @@ class ExploreServer():
         step_size = generate_step_size()
 
         def turn_till_path(ang_vel=0.0) -> None:
+            print("TURNINGGGGGGGGGGGGGG")
+
             self.robot_controller.stop()
 
             # turn till there is a path in front of robot
@@ -112,10 +114,10 @@ class ExploreServer():
                 #     capture_image()
 
         def left_path() -> bool:
-            return self.robot_scan.left_max_distance > AVOIDANCE_DISTANCE*2
+            return self.robot_scan.left_max_distance > AVOIDANCE_DISTANCE*1.5
 
         def right_path() -> bool:
-            return self.robot_scan.right_max_distance > AVOIDANCE_DISTANCE*2
+            return self.robot_scan.right_max_distance > AVOIDANCE_DISTANCE*1.5
 
         def choose_wall() -> None:
             """
@@ -143,9 +145,12 @@ class ExploreServer():
         
 
         while rospy.get_rostime() < (self.request_time + self.assignment_time_limit + rospy.Duration(180)):
+            print(self.wall_to_follow)
             
             # if obstacle detected ahead
             if self.robot_scan.front_min_distance <= AVOIDANCE_DISTANCE*1.2:
+                print("TOOO CLOSEEEEEEE")
+
                 self.robot_controller.stop()
                 self.follow_wall = True
 
@@ -203,7 +208,7 @@ class ExploreServer():
 class Tb3LaserScan(object):
     def laserscan_cb(self, scan_data: LaserScan):
 
-        front_region = np.array((scan_data.ranges[-20:] + scan_data.ranges[0:21])[::-1])
+        front_region = np.array((scan_data.ranges[-10:] + scan_data.ranges[0:11])[::-1])
         left_region = np.array(scan_data.ranges[90-20:90+20][::-1])
         right_region = np.array(scan_data.ranges[270-20:270+20][::-1])
         rear_region = np.array(scan_data.ranges[120:240])

@@ -3,4 +3,6 @@
   </node>
   <node pkg="team1" type="obstacle_avoidance_explore_server.py" name="explore_action_server" output="screen">
   </node>
+  <!-- <include file="$(find turtlebot3_slam)/launch/turtlebot3_slam.launch" />
+  <node pkg="team1" type="exploration_map_getter.py" name="exploration_map_getter" output="screen" /> -->
 </launch>

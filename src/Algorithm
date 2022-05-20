@@ -15,9 +15,21 @@ Move foward if possible
     store position and orientation and turn command in array topological_map?
 
 =============== current problems
+- map only saved at start
 - detecting colours lot harder in real world than simulation, lots of testing needed
-- turtlebot3_slam package doesn't exist on local env
-- robot just spins around in some cases (tune self.lim_ang_vel?)
+- things to tune
+    - robot just spins around in some cases (tune self.lim_ang_vel so robot can about to collide into wall?)
+    - distance to follow from wall
+    - distance to stop in front of wall
+- alternative exploration strategy?
 
 =============== guarantee some marks
 - store picture of any beacon unless picture of target beacon already taken
+
+=============== THINGS TO CHANGE FOR TASK5 SUBMISSION
+CAMERA TOPICS
+    - tb3.py -> Tb3Camera
+    - exploration_capture_image_server.py
+
+HSV FILE
+    - tb3.py -> Tb3Camera

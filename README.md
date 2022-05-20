@@ -1,4 +1,6 @@
 # Commands
+- `chmod -R +x src launch` for entire folders
+- `cd maps` directory, then `eog task5_map.pgm` to view map file stored
 
 ### Bash aliases
 - `./bash_aliases` contains handy shortcuts for launching assignment related nodes which you can copy into `/home/student/.bash_aliases`
